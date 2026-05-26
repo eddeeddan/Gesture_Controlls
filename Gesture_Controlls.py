@@ -21,11 +21,11 @@ from pynput.mouse import Button, Controller as MouseController
 Max_Hands       = 1
 Gesture_Confirm = 5
 Camera_Id       = 0
-Fast_Interval   = 1
-Slow_Interval   = 10
-Scroll_Steps    = 10
-Brightness_Step = 5
-Volume_Step     = 0.05
+Fast_Interval   = 2
+Slow_Interval   = 2
+Scroll_Steps    = 5
+Brightness_Step = 1
+Volume_Step     = 0.01
 
 # MediaPipe setup
 mp_hands = mp.solutions.hands
@@ -40,29 +40,26 @@ gesture_buffers = {"Right": deque(maxlen=Gesture_Confirm), "Left": deque(maxlen=
 last_confirmed = {"Right": "", "Left": ""}
 
 # Help functions
-"""
-# Calculates the Euclidean distance between two landmarks
-# Parameters: lm (landmark list), a (index of first landmark), b (index of second landmark)
-# Returns: Float distance between the two points
-"""
 def dist(lm, a, b):
+    """Calculates the Euclidean distance between two landmarks.
+    Parameters: lm (landmark list), a (index of first landmark), b (index of second landmark)
+    Returns: Float distance between the two points
+    """
     return math.hypot(lm[a].x - lm[b].x, lm[a].y - lm[b].y)
 
-"""
-# Calculates the distance between two landmarks normalized against hand size
-# Parameters: lm (landmark list), a (index of first landmark), b (index of second landmark)
-# Returns: Float normalized distance (0.0 - 1.0 roughly)
-"""
 def normalize(lm, a, b):
+    """Calculates the distance between two landmarks normalized against hand size.
+    Parameters: lm (landmark list), a (index of first landmark), b (index of second landmark)
+    Returns: Float normalized distance (0.0 - 1.0 roughly)
+    """
     hand_size = dist(lm, 0, 9) + 1e-6
     return dist(lm, a, b) / hand_size
 
-"""
-# Determines whether the hand is facing palm-side or back-side toward the camera
-# Parameters: lm (landmark list), is_right (bool, True if right hand)
-# Returns: String "palm" or "back"
-"""
 def get_hand_facing(lm, is_right):
+    """Determines whether the hand is facing palm-side or back-side toward the camera.
+    Parameters: lm (landmark list), is_right (bool, True if right hand)
+    Returns: String "palm" or "back"
+    """
     v1 = (lm[5].x - lm[0].x,  lm[5].y - lm[0].y)
     v2 = (lm[17].x - lm[0].x, lm[17].y - lm[0].y)
     cross_z = v1[0] * v2[1] - v1[1] * v2[0]
@@ -71,13 +68,12 @@ def get_hand_facing(lm, is_right):
     else:
         return "palm" if cross_z < 0 else "back"
 
-"""
-# Checks whether a given finger is extended upward, with special sideways logic for the thumb
-# Parameters: lm (landmark list), tip (tip landmark index), pip (base landmark index),
-#             is_right (bool), is_thumb (bool), facing (str "palm" or "back")
-# Returns: Bool, True if finger is considered up/extended
-"""
 def finger_up(lm, tip, pip, is_right=True, is_thumb=False, facing="palm"):
+    """Checks whether a given finger is extended upward, with special sideways logic for the thumb.
+    Parameters: lm (landmark list), tip (tip landmark index), pip (base landmark index),
+                is_right (bool), is_thumb (bool), facing (str "palm" or "back")
+    Returns: Bool, True if finger is considered up/extended
+    """
     if is_thumb:
         if facing == "palm":
             return lm[4].x < lm[3].x if is_right else lm[4].x > lm[3].x
@@ -85,12 +81,11 @@ def finger_up(lm, tip, pip, is_right=True, is_thumb=False, facing="palm"):
             return lm[4].x > lm[3].x if is_right else lm[4].x < lm[3].x
     return lm[tip].y < lm[pip].y
 
-"""
-# Determines whether the thumb is pointing up, down, or sideways based on its vertical position
-# Parameters: lm (landmark list)
-# Returns: String "Thumbs Up", "Thumbs Down", or "Thumbs Sideways"
-"""
 def thumb_direction(lm):
+    """Determines whether the thumb is pointing up, down, or sideways based on its vertical position.
+    Parameters: lm (landmark list)
+    Returns: String "Thumbs Up", "Thumbs Down", or "Thumbs Sideways"
+    """
     hand_height = abs(lm[0].y - lm[9].y) + 1e-6
     diff = (lm[0].y - lm[4].y) / hand_height
     if diff > 1:
@@ -100,12 +95,11 @@ def thumb_direction(lm):
     else:
         return "Thumbs Sideways"
 
-"""
-# Identifies the current hand gesture using landmark positions, pinch distances, and finger states
-# Parameters: lm (landmark list), is_right (bool, True if right hand)
-# Returns: String name of the detected gesture
-"""
 def detect_gesture(lm, is_right):
+    """Identifies the current hand gesture using landmark positions, pinch distances, and finger states.
+    Parameters: lm (landmark list), is_right (bool, True if right hand)
+    Returns: String name of the detected gesture
+    """
     facing = get_hand_facing(lm, is_right)
 
     thumb  = finger_up(lm, 4,  3,  is_right, is_thumb=True, facing=facing)
@@ -154,12 +148,11 @@ try:
 except Exception:
     current_brightness = 50
 
-"""
-# Sets the screen brightness to an absolute level and updates the cached value
-# Parameters: level (int, 0-100)
-# Returns: Void
-"""
 def set_brightness(level: int):
+    """Sets the screen brightness to an absolute level and updates the cached value.
+    Parameters: level (int, 0-100)
+    Returns: Void
+    """
     global current_brightness
     try:
         sbc.set_brightness(level)
@@ -168,12 +161,11 @@ def set_brightness(level: int):
     except Exception as e:
         print(f"[Brightness]: Could not set {e}")
 
-"""
-# Adjusts the screen brightness relative to the current cached value, snapped to Brightness_Step grid
-# Parameters: step (int, positive to increase, negative to decrease)
-# Returns: Void
-"""
 def adjust_brightness(step: int):
+    """Adjusts the screen brightness relative to the current cached value, snapped to Brightness_Step grid.
+    Parameters: step (int, positive to increase, negative to decrease)
+    Returns: Void
+    """
     global current_brightness
     new = current_brightness + step
     new = round(new / Brightness_Step) * Brightness_Step
@@ -181,43 +173,39 @@ def adjust_brightness(step: int):
     if new != current_brightness:
         set_brightness(new)
 
-"""
-# Simulates a single keyboard key press and release
-# Parameters: key1 (pynput Key or char)
-# Returns: Void
-"""
 def single_key(key1):
+    """Simulates a single keyboard key press and release.
+    Parameters: key1 (pynput Key or char)
+    Returns: Void
+    """
     keyboard.press(key1)  
     keyboard.release(key1)
     print(f"[Keyboard]: {key1}")
 
-"""
-# Simulates a keyboard shortcut by pressing two keys simultaneously
-# Parameters: key1 (modifier key), key2 (second key)
-# Returns: Void
-"""
 def double_key(key1, key2):
+    """Simulates a keyboard shortcut by pressing two keys simultaneously.
+    Parameters: key1 (modifier key), key2 (second key)
+    Returns: Void
+    """
     keyboard.press(key1)
     keyboard.press(key2)
     keyboard.release(key2)
     keyboard.release(key1)
     print(f"[Keyboard]: {key1} + {key2}")
 
-"""
-# Scrolls the mouse wheel vertically by Scroll_Steps units
-# Parameters: direction (int, positive = up, negative = down)
-# Returns: Void
-"""
 def scroll(direction: int):
+    """Scrolls the mouse wheel vertically by Scroll_Steps units.
+    Parameters: direction (int, positive = up, negative = down)
+    Returns: Void
+    """
     mouse.scroll(Scroll_Steps, direction)
     print(f"[Scroll]: {'up' if direction > 0 else 'down'}")
 
-"""
-# Performs a mouse button click
-# Parameters: button (pynput Button, default left click)
-# Returns: Void
-"""
 def click(button=Button.left):
+    """Performs a mouse button click.
+    Parameters: button (pynput Button, default left click)
+    Returns: Void
+    """
     mouse.click(button)
     print(f"[Click]: {button}")
 
@@ -226,34 +214,31 @@ _devices        = AudioUtilities.GetSpeakers()
 _interface      = _devices._dev.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
 volume_control  = cast(_interface, POINTER(IAudioEndpointVolume))
 
-"""
-# Adjusts the system master volume relative to the current level using the Windows Audio API
-# Parameters: step (float, positive to increase, negative to decrease)
-# Returns: Void
-"""
 def adjust_volume(step: float):
+    """Adjusts the system master volume relative to the current level using the Windows Audio API.
+    Parameters: step (float, positive to increase, negative to decrease)
+    Returns: Void
+    """
     current = volume_control.GetMasterVolumeLevelScalar()
     new     = round(max(0.0, min(1.0, current + step)), 2)
     volume_control.SetMasterVolumeLevelScalar(new, None)
     print(f"[Volume]: {round(new * 100)}%")
 
-"""
-# Toggles the system master volume mute state on or off
-# Parameters: Void
-# Returns: Void
-"""
 def toggle_mute():
+    """Toggles the system master volume mute state on or off.
+    Parameters: Void
+    Returns: Void
+    """
     muted = volume_control.GetMute()
     volume_control.SetMute(not muted, None)
     print(f"[Volume]: {'Muted' if not muted else 'Unmuted'}")
 
 # Gesture actions
-"""
-# Marks a lambda as continuous so it repeats every frame while the gesture is held, instead of firing once
-# Parameters: fn (callable)
-# Returns: The same callable with _continuous attribute set to True
-"""
 def continuous(fn):
+    """Marks a lambda as continuous so it repeats every frame while the gesture is held, instead of firing once.
+    Parameters: fn (callable)
+    Returns: The same callable with _continuous attribute set to True
+    """
     fn._continuous = True
     return fn
 
@@ -268,13 +253,13 @@ MODES = {
     "Four Fingers": ("Volume", continuous(lambda: adjust_volume(Volume_Step)),
                     continuous(lambda: adjust_volume(-Volume_Step)),
                     (255, 255, 0)),
+    "Two Five": ("Game", continuous(lambda: adjust_volume(Volume_Step)),
+                    continuous(lambda: adjust_volume(-Volume_Step)),
+                    (255, 127, 127)),
 }
 
 GESTURE_ACTIONS = {
-    "One Five":      lambda: set_brightness(100),
-    "Two Five":      lambda: set_brightness(0),
     "Peace":         lambda: double_key(Key.alt, Key.tab),
-    "Pointing":      continuous(lambda: single_key(Key.space)),
     "Pinch":         lambda: click(Button.left),
     "Middle Finger": "QUIT",
 }
@@ -284,18 +269,15 @@ actions_enabled = True
 active_mode     = None
 
 # Frame counters
-prev_time              = 0
-repeat_frame_count     = 0
-brightness_frame_count = 0
-volume_frame_count     = 0
-scroll_frame_count     = 0
+prev_time          = 0
+repeat_frame_count = 0
+mode_frame_counts  = {"Scroll": 0, "Brightness": 0, "Volume": 0, "Game": 0}
 
-"""
-# Draws FPS counter in top right and actions/mode status in top left
-# Parameters: img (frame), fps (float)
-# Returns: Void
-"""
 def draw_hud(img, fps):
+    """Draws FPS counter in top right and actions/mode status in top left.
+    Parameters: img (frame), fps (float)
+    Returns: Void
+    """
     fps_text    = f"FPS: {int(fps)}"
     (tw, _), _  = cv2.getTextSize(fps_text, cv2.FONT_HERSHEY_SIMPLEX, 0.8, 2)
     cv2.putText(img, fps_text, (img.shape[1] - tw - 10, 30),
@@ -309,19 +291,14 @@ def draw_hud(img, fps):
         mode_name, _, _, mode_color = MODES[active_mode]
         cv2.putText(img, f"Mode: {mode_name}", (10, 58), cv2.FONT_HERSHEY_SIMPLEX, 0.7, mode_color, 2)
 
-"""
-# Fires continuous actions from GESTURE_ACTIONS and active MODES based on frame counters
-# Parameters: Void
-# Returns: Void
-"""
 def process_continuous_actions():
-    global repeat_frame_count, brightness_frame_count, volume_frame_count, scroll_frame_count
+    """Fires continuous actions from GESTURE_ACTIONS and active MODES based on frame counters.
+    Parameters: Void
+    Returns: Void
+    """
+    global repeat_frame_count
 
-    repeat_frame_count     += 1
-    brightness_frame_count += 1
-    volume_frame_count     += 1
-    scroll_frame_count     += 1
-
+    repeat_frame_count += 1
     if repeat_frame_count >= Fast_Interval:
         repeat_frame_count = 0
         if actions_enabled:
@@ -329,26 +306,17 @@ def process_continuous_actions():
                 action = GESTURE_ACTIONS.get(last_confirmed[label])
                 if callable(action) and getattr(action, "_continuous", False):
                     action()
+                if active_mode == "Two Five" and last_confirmed[label] == "Pointing":
+                    single_key(Key.space)
 
     if actions_enabled and active_mode:
         _, up_action, down_action, _ = MODES[active_mode]
         mode_name = MODES[active_mode][0]
         interval  = Slow_Interval if mode_name in ("Brightness", "Volume") else Fast_Interval
 
-        if mode_name == "Brightness":
-            counter = brightness_frame_count
-        elif mode_name == "Volume":
-            counter = volume_frame_count
-        else:
-            counter = scroll_frame_count
-
-        if counter >= interval:
-            if mode_name == "Brightness":
-                brightness_frame_count = 0
-            elif mode_name == "Volume":
-                volume_frame_count = 0
-            else:
-                scroll_frame_count = 0
+        mode_frame_counts[mode_name] += 1
+        if mode_frame_counts[mode_name] >= interval:
+            mode_frame_counts[mode_name] = 0
             for label in last_confirmed:
                 gesture = last_confirmed[label]
                 if gesture == "Thumbs Up":
@@ -356,12 +324,11 @@ def process_continuous_actions():
                 elif gesture == "Thumbs Down":
                     down_action()
 
-"""
-# Handles a newly confirmed gesture by triggering the appropriate action or mode change
-# Parameters: gesture (str), label (str), facing (str)
-# Returns: Bool, True if the program should quit
-"""
 def handle_confirmed_gesture(gesture, label, facing):
+    """Handles a newly confirmed gesture by triggering the appropriate action or mode change.
+    Parameters: gesture (str), label (str), facing (str)
+    Returns: Bool, True if the program should quit
+    """
     global actions_enabled, active_mode
 
     print(f"{label} [{facing}]: {gesture}")
@@ -387,12 +354,11 @@ def handle_confirmed_gesture(gesture, label, facing):
         action()
     return False
 
-"""
-# Processes all detected hands in the current frame, updates gesture buffers and draws labels
-# Parameters: img (frame), result (MediaPipe result)
-# Returns: Bool, True if the program should quit
-"""
 def process_hands(img, result):
+    """Processes all detected hands in the current frame, updates gesture buffers and draws labels.
+    Parameters: img (frame), result (MediaPipe result)
+    Returns: Bool, True if the program should quit
+    """
     if not result.multi_hand_landmarks:
         last_confirmed["Right"] = ""
         last_confirmed["Left"]  = ""
