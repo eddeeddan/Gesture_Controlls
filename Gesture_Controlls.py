@@ -24,7 +24,7 @@ Camera_Id       = 0
 Fast_Interval   = 2
 Slow_Interval   = 2
 Scroll_Steps    = 5
-Brightness_Step = 1
+Brightness_Step = 2
 Volume_Step     = 0.01
 
 # MediaPipe setup
@@ -416,4 +416,6 @@ while running:
 # Cleanup
 hands.close()
 cap.release()
+cv2.waitKey(1)
 cv2.destroyAllWindows()
+cv2.waitKey(1)
